@@ -1,0 +1,36 @@
+# Development files
+test-*.js
+*.test.js
+*.spec.js
+
+# Documentation
+IMPLEMENTATION.md
+CONTRIBUTING.md
+CHANGELOG.md
+
+# Output and logs
+output/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# CI/CD
+.github/
+
+# Misc
+node_modules/
+coverage/
+.nyc_output/
