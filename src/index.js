@@ -37,6 +37,7 @@ program
   .option('-r, --retries <num>', 'Max retry attempts', String(CONFIG.DEFAULT_MAX_RETRIES))
   .option('--auto-only', 'Only download auto-generated subtitles', false)
   .option('--keep-original', 'Keep original VTT/SRT files', false)
+  .option('--format <format>', 'Output format: txt or json (default: txt)', 'txt')
   .option('--cookies <file>', 'Path to cookies file for authentication')
   .option('--cookies-from-browser <browser>', 'Browser to extract cookies from (chrome, firefox, safari, etc.)')
   .option('-v, --verbose', 'Enable verbose logging', false)
@@ -66,6 +67,12 @@ program
       );
       const maxRetries = parseInt(options.retries, 10);
       const outputDir = path.resolve(options.output);
+      const format = options.format.toLowerCase();
+
+      // Validate format option
+      if (!['txt', 'json'].includes(format)) {
+        throw new ValidationError('Format must be either "txt" or "json"');
+      }
 
       await logger.debug(`Configuration: ${JSON.stringify({
         url,
@@ -75,9 +82,10 @@ program
         maxRetries,
         autoOnly: options.autoOnly,
         keepOriginal: options.keepOriginal,
+        format: format,
         cookies: options.cookies,
         cookiesFromBrowser: options.cookiesFromBrowser
-      })}`);
+      })}`)
 
       // Validate system dependencies
       if (!options.skipValidation) {
@@ -102,6 +110,7 @@ program
         maxRetries,
         autoOnly: options.autoOnly,
         keepOriginal: options.keepOriginal,
+        format: format,
         cookies: options.cookies,
         cookiesFromBrowser: options.cookiesFromBrowser
       });

@@ -10,7 +10,7 @@ import { withRetry } from '../lib/retry.js';
 import { processQueue } from '../lib/queue.js';
 import { ProgressTracker } from '../lib/progress.js';
 import { StatsCollector } from '../lib/stats.js';
-import { convertToPlainText, findSubtitleFiles } from './parser.js';
+import { convertToPlainText, convertToJSON, findSubtitleFiles } from './parser.js';
 import { CONFIG } from '../config/constants.js';
 import { executeYtDlp, findYtDlpPath } from '../utils/ytdlp.js';
 
@@ -37,6 +37,7 @@ export async function downloadSubtitles(videos, options = {}) {
     maxRetries = CONFIG.DEFAULT_MAX_RETRIES,
     autoOnly = false,
     keepOriginal = false,
+    format = 'txt',
     cookies = null,
     cookiesFromBrowser = null
   } = options;
@@ -59,7 +60,7 @@ export async function downloadSubtitles(videos, options = {}) {
       try {
         // Download subtitle with retry logic
         const result = await withRetry(
-          () => downloadVideoSubtitle(video, outputDir, languages, autoOnly, keepOriginal, cookies, cookiesFromBrowser),
+          () => downloadVideoSubtitle(video, outputDir, languages, autoOnly, keepOriginal, format, cookies, cookiesFromBrowser),
           {
             maxRetries,
             context: `Download ${video.title}`
@@ -100,7 +101,7 @@ export async function downloadSubtitles(videos, options = {}) {
 /**
  * Download subtitle for a single video
  */
-async function downloadVideoSubtitle(video, outputDir, languages, autoOnly, keepOriginal, cookies, cookiesFromBrowser) {
+async function downloadVideoSubtitle(video, outputDir, languages, autoOnly, keepOriginal, format, cookies, cookiesFromBrowser) {
   await logger.debug(`Downloading subtitle for: ${video.title}`);
 
   // Create output directory for this video
@@ -120,8 +121,8 @@ async function downloadVideoSubtitle(video, outputDir, languages, autoOnly, keep
     // Only download auto-generated subtitles
     args.unshift('--write-auto-subs');
   } else {
-    // Only download manual/original subtitles
-    args.unshift('--write-subs');
+    // Download both manual and auto-generated subtitles (prefer manual if available)
+    args.unshift('--write-subs', '--write-auto-subs');
   }
 
   // Add cookies if provided
@@ -152,14 +153,20 @@ async function downloadVideoSubtitle(video, outputDir, languages, autoOnly, keep
 
     await logger.debug(`Found ${subtitleFiles.length} subtitle file(s)`);
 
-    // Convert all subtitle files to plain text
+    // Convert all subtitle files based on format
     let totalSize = 0;
     for (const subtitleFile of subtitleFiles) {
-      const outputPath = subtitleFile.replace(/\.(vtt|srt)$/, '.txt');
-      await convertToPlainText(subtitleFile, outputPath, !keepOriginal);
-
-      const size = await getFileSize(outputPath);
-      totalSize += size;
+      if (format === 'json') {
+        const outputPath = subtitleFile.replace(/\.(vtt|srt)$/, '.json');
+        await convertToJSON(subtitleFile, outputPath, video.id, false); // Always keep original VTT/SRT files
+        const size = await getFileSize(outputPath);
+        totalSize += size;
+      } else {
+        const outputPath = subtitleFile.replace(/\.(vtt|srt)$/, '.txt');
+        await convertToPlainText(subtitleFile, outputPath, false); // Always keep original VTT/SRT files
+        const size = await getFileSize(outputPath);
+        totalSize += size;
+      }
     }
 
     await logger.success(`Downloaded subtitles for: ${video.title}`);
