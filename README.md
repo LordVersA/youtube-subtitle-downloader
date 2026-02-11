@@ -24,6 +24,7 @@ A powerful Node.js CLI application to download YouTube subtitles from videos, pl
 ## Features
 
 - ✅ Download subtitles from YouTube videos, playlists, and channels
+- ✅ Search and filter videos in a YouTube channel by query
 - ✅ Concurrent processing (configurable, default 3 simultaneous downloads)
 - ✅ Automatic retry with exponential backoff for network failures
 - ✅ Real-time progress tracking with multi-spinner display
@@ -117,6 +118,35 @@ yt-sub-dl "https://www.youtube.com/playlist?list=PLAYLIST_ID"
 yt-sub-dl "https://www.youtube.com/@channel-name"
 ```
 
+### Search Channel Videos
+
+Search for specific videos in a YouTube channel and save results to JSON:
+
+```bash
+# Search for videos containing "tutorial" in a channel
+yt-sub-dl search "https://www.youtube.com/@channel-name" "tutorial"
+
+# Search in channel streams
+yt-sub-dl search "https://www.youtube.com/@channel-name/streams" "live"
+
+# Search in channel videos
+yt-sub-dl search "https://www.youtube.com/@channel-name/videos" "python"
+
+# Specify output file
+yt-sub-dl search "https://www.youtube.com/@channel-name" "python" -o ./results.json
+
+# With verbose logging
+yt-sub-dl search "https://www.youtube.com/@channel-name" "javascript" -v
+```
+
+The search results will include:
+- Video title
+- YouTube URL
+- Upload date
+- Uploader name
+- Duration
+- View count
+
 ### Advanced Options
 
 ```bash
@@ -147,7 +177,11 @@ yt-sub-dl URL -r 5
 
 ## Command Line Options
 
+### Main Command (Download Subtitles)
+
 ```
+Usage: yt-sub-dl <url> [options]
+
 Arguments:
   url                           YouTube video, playlist, or channel URL
 
@@ -156,8 +190,11 @@ Options:
   -l, --langs <langs>          Subtitle languages, comma-separated (default: "en")
   -c, --concurrency <num>      Concurrent downloads (default: 3, max: 10)
   -r, --retries <num>          Max retry attempts (default: 3)
+  --format <format>            Output format: txt or json (default: txt)
   --auto-only                  Only download auto-generated subtitles
   --keep-original              Keep original VTT/SRT files (default: delete after conversion)
+  --cookies <file>             Path to cookies file for authentication
+  --cookies-from-browser <br>  Browser to extract cookies from
   -v, --verbose                Enable verbose logging
   --log-file <path>            Write logs to file
   --skip-validation            Skip system dependency validation
@@ -165,7 +202,28 @@ Options:
   -V, --version                Display version
 ```
 
+### Search Command
+
+```
+Usage: yt-sub-dl search <channel-url> <query> [options]
+
+Arguments:
+  channel-url                  YouTube channel URL
+  query                        Search query to filter video titles
+
+Options:
+  -o, --output <file>          Output JSON file path (default: "./search-results.json")
+  --cookies <file>             Path to cookies file for authentication
+  --cookies-from-browser <br>  Browser to extract cookies from
+  -v, --verbose                Enable verbose logging
+  --log-file <path>            Write logs to file
+  --skip-validation            Skip system dependency validation
+  -h, --help                   Display help
+```
+
 ## Output Structure
+
+### Subtitle Downloads
 
 ```
 output/
@@ -176,6 +234,37 @@ output/
 │   └── Video Title 2.en.txt
 └── Video Title 3/
     └── Video Title 3.en.txt
+```
+
+### Search Results
+
+The search command outputs a JSON file with this structure:
+
+```json
+{
+  "query": "tutorial",
+  "channel_url": "https://www.youtube.com/@channel-name",
+  "search_date": "2026-02-08T12:34:56.789Z",
+  "total_results": 15,
+  "videos": [
+    {
+      "title": "Python Tutorial for Beginners",
+      "url": "https://www.youtube.com/watch?v=VIDEO_ID",
+      "upload_date": "2024-01-15",
+      "uploader": "Channel Name",
+      "duration": 1234,
+      "view_count": 50000
+    },
+    {
+      "title": "Advanced Python Tutorial",
+      "url": "https://www.youtube.com/watch?v=VIDEO_ID_2",
+      "upload_date": "2024-02-20",
+      "uploader": "Channel Name",
+      "duration": 2100,
+      "view_count": 75000
+    }
+  ]
+}
 ```
 
 ## Example Output
@@ -336,6 +425,7 @@ yt-sub-dl/
 │   ├── core/
 │   │   ├── downloader.js     # Main orchestrator
 │   │   ├── extractor.js      # URL detection & extraction
+│   │   ├── searcher.js       # Channel video search
 │   │   ├── parser.js         # Subtitle conversion
 │   │   └── validator.js      # System validation
 │   ├── lib/
@@ -363,6 +453,12 @@ node src/index.js "https://www.youtube.com/playlist?list=PLAYLIST_ID" -v
 
 # With all options
 node src/index.js URL -o ./test -l en,es -c 5 -v --log-file test.log
+
+# Search command
+node src/index.js search "https://www.youtube.com/@channel-name" "tutorial" -v
+
+# Search with custom output
+node src/index.js search "https://www.youtube.com/@channel-name" "python" -o ./my-results.json
 ```
 
 ## License

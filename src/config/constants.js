@@ -44,7 +44,7 @@ export const CONFIG = {
 };
 
 export const URL_PATTERNS = {
-  VIDEO: /(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
+  VIDEO: /(?:(?:www\.)?youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
   PLAYLIST: /[?&]list=([a-zA-Z0-9_-]+)/,
-  CHANNEL: /youtube\.com\/(channel|c|user|@)\/([a-zA-Z0-9_-]+)/
+  CHANNEL: /(?:www\.)?youtube\.com\/((?:channel|c|user)\/|@)([a-zA-Z0-9_-]+)(?:\/(?:videos|streams|playlists|community|about)?)?/
 };

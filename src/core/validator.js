@@ -15,8 +15,6 @@ const execAsync = promisify(exec);
  * Validate system dependencies
  */
 export async function validateSystem() {
-  await logger.info(chalk.cyan('🔍 Validating system dependencies...'));
-
   // Check Node.js version
   await validateNodeVersion();
 
@@ -26,7 +24,7 @@ export async function validateSystem() {
   // Check FFmpeg (optional, just warn)
   await checkFFmpeg();
 
-  await logger.success('All dependencies validated');
+  await logger.debug('All dependencies validated');
 }
 
 /**

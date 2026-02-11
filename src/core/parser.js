@@ -196,7 +196,7 @@ export async function findSubtitleFiles(directory) {
 /**
  * Convert VTT/SRT subtitle file to JSON with timestamps
  */
-export async function convertToJSON(subtitlePath, outputPath, videoId, deleteOriginal = false) {
+export async function convertToJSON(subtitlePath, outputPath, videoId, deleteOriginal = false, metadata = {}) {
   try {
     await logger.debug(`Converting subtitle file to JSON: ${subtitlePath}`);
 
@@ -206,9 +206,12 @@ export async function convertToJSON(subtitlePath, outputPath, videoId, deleteOri
     // Parse VTT with timestamps
     const captions = parseVTTWithTimestamps(content);
 
-    // Create JSON structure
+    // Create JSON structure with metadata
     const jsonData = {
       videoId: videoId,
+      title: metadata.title || null,
+      duration: metadata.duration || null,
+      upload_date: metadata.upload_date || null,
       subtitles: captions
     };
 

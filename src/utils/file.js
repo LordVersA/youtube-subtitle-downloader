@@ -165,3 +165,18 @@ export async function writeFile(filePath, content) {
     );
   }
 }
+
+/**
+ * Rename/move file
+ */
+export async function renameFile(oldPath, newPath) {
+  try {
+    await fs.rename(oldPath, newPath);
+  } catch (error) {
+    throw new FileOperationError(
+      `Failed to rename file: ${error.message}`,
+      oldPath,
+      'rename'
+    );
+  }
+}

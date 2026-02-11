@@ -3,7 +3,7 @@
  */
 
 import path from 'path';
-import { ensureDir, sanitizeFilename, getFileSize } from '../utils/file.js';
+import { ensureDir, sanitizeFilename, getFileSize, renameFile } from '../utils/file.js';
 import { DownloadError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
 import { withRetry } from '../lib/retry.js';
@@ -13,6 +13,7 @@ import { StatsCollector } from '../lib/stats.js';
 import { convertToPlainText, convertToJSON, findSubtitleFiles } from './parser.js';
 import { CONFIG } from '../config/constants.js';
 import { executeYtDlp, findYtDlpPath } from '../utils/ytdlp.js';
+import { enrichVideoMetadata } from './extractor.js';
 
 let ytdlpPath = null;
 
@@ -104,16 +105,24 @@ export async function downloadSubtitles(videos, options = {}) {
 async function downloadVideoSubtitle(video, outputDir, languages, autoOnly, keepOriginal, format, cookies, cookiesFromBrowser) {
   await logger.debug(`Downloading subtitle for: ${video.title}`);
 
-  // Create output directory for this video
-  const videoDir = path.join(outputDir, sanitizeFilename(video.title));
-  await ensureDir(videoDir);
+  // Enrich video metadata if upload_date is missing
+  let enrichedVideo = video;
+  if (!video.upload_date) {
+    console.log(`[DEBUG] Enriching metadata for video: ${video.id}`);
+    enrichedVideo = await enrichVideoMetadata(video, { cookies, cookiesFromBrowser });
+    console.log(`[DEBUG] Enriched upload_date: ${enrichedVideo.upload_date}`);
+  }
+
+  // Create a temporary directory for downloading (use video title for yt-dlp)
+  // But we'll move files to flat output directory after
+  const tempVideoDir = path.join(outputDir, '.temp', sanitizeFilename(enrichedVideo.title));
+  await ensureDir(tempVideoDir);
 
   // Build yt-dlp arguments
   const args = [
     '--skip-download',
     '--sub-langs', languages.join(','),
-    '--output', path.join(videoDir, '%(title)s.%(ext)s'),
-    '--js-runtimes', 'node'
+    '--output', path.join(tempVideoDir, '%(title)s.%(ext)s')
   ];
 
   // Add subtitle download flags based on autoOnly option
@@ -125,6 +134,15 @@ async function downloadVideoSubtitle(video, outputDir, languages, autoOnly, keep
     args.unshift('--write-subs', '--write-auto-subs');
   }
 
+  // Add anti-bot detection measures
+  args.push(
+    '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+    '--sleep-interval', '2',
+    '--max-sleep-interval', '5',
+    '--extractor-args', 'youtube:player_client=ios,web',
+    '--extractor-args', 'youtube:player_skip=configs'
+  );
+
   // Add cookies if provided
   if (cookies) {
     args.push('--cookies', cookies);
@@ -133,50 +151,94 @@ async function downloadVideoSubtitle(video, outputDir, languages, autoOnly, keep
     args.push('--cookies-from-browser', cookiesFromBrowser);
   }
 
-  args.push(video.url);
+  args.push(enrichedVideo.url);
 
   try {
     // Execute yt-dlp
-    await logger.debug(`Downloading subtitles for ${video.url}`);
+    await logger.debug(`Downloading subtitles for ${enrichedVideo.url}`);
     await executeYtDlp(args, getYtDlpPath());
 
     // Find downloaded subtitle files
-    const subtitleFiles = await findSubtitleFiles(videoDir);
+    const subtitleFiles = await findSubtitleFiles(tempVideoDir);
 
     if (subtitleFiles.length === 0) {
       throw new DownloadError(
         'No subtitles available for this video',
-        video.id,
+        enrichedVideo.id,
         false // Not retryable
       );
     }
 
     await logger.debug(`Found ${subtitleFiles.length} subtitle file(s)`);
 
-    // Convert all subtitle files based on format
+    // Generate new filename with format: releasedate-videoid
+    // Use upload_date_raw (YYYYMMDD) for filename
+    const uploadDate = enrichedVideo.upload_date_raw || 'unknown';
+    const newFilenameBase = `${uploadDate}-${enrichedVideo.id}`;
+
+    // Ensure main output directory exists
+    await ensureDir(outputDir);
+
+    // Convert all subtitle files based on format and move to flat output directory
     let totalSize = 0;
+    const outputFiles = [];
+
     for (const subtitleFile of subtitleFiles) {
       if (format === 'json') {
-        const outputPath = subtitleFile.replace(/\.(vtt|srt)$/, '.json');
-        await convertToJSON(subtitleFile, outputPath, video.id, false); // Always keep original VTT/SRT files
-        const size = await getFileSize(outputPath);
+        const tempOutputPath = subtitleFile.replace(/\.(vtt|srt)$/, '.json');
+        // Pass video metadata to JSON converter
+        const metadata = {
+          title: enrichedVideo.title,
+          duration: enrichedVideo.duration,
+          upload_date: enrichedVideo.upload_date
+        };
+        await convertToJSON(subtitleFile, tempOutputPath, enrichedVideo.id, false, metadata);
+
+        // Move to flat output directory with new name: releasedate-videoid.json
+        const fileExt = path.extname(tempOutputPath);
+        const langMatch = path.basename(tempOutputPath).match(/\.([a-z]{2}(-[a-z]+)?)\./i);
+        const langCode = langMatch ? `.${langMatch[1]}` : '';
+        const finalPath = path.join(outputDir, `${newFilenameBase}${langCode}${fileExt}`);
+        await renameFile(tempOutputPath, finalPath);
+
+        const size = await getFileSize(finalPath);
         totalSize += size;
+        outputFiles.push(finalPath);
       } else {
-        const outputPath = subtitleFile.replace(/\.(vtt|srt)$/, '.txt');
-        await convertToPlainText(subtitleFile, outputPath, false); // Always keep original VTT/SRT files
-        const size = await getFileSize(outputPath);
+        const tempOutputPath = subtitleFile.replace(/\.(vtt|srt)$/, '.txt');
+        await convertToPlainText(subtitleFile, tempOutputPath, false);
+
+        // Move to flat output directory with new name: releasedate-videoid.txt
+        const fileExt = path.extname(tempOutputPath);
+        const langMatch = path.basename(tempOutputPath).match(/\.([a-z]{2}(-[a-z]+)?)\./i);
+        const langCode = langMatch ? `.${langMatch[1]}` : '';
+        const finalPath = path.join(outputDir, `${newFilenameBase}${langCode}${fileExt}`);
+        await renameFile(tempOutputPath, finalPath);
+
+        const size = await getFileSize(finalPath);
         totalSize += size;
+        outputFiles.push(finalPath);
       }
     }
 
-    await logger.success(`Downloaded subtitles for: ${video.title}`);
+    // Clean up temp directory
+    try {
+      const fs = await import('fs/promises');
+      await fs.rm(tempVideoDir, { recursive: true, force: true });
+    } catch (error) {
+      // Ignore cleanup errors
+      await logger.debug(`Failed to clean up temp directory: ${error.message}`);
+    }
+
+    await logger.success(`Downloaded subtitles for: ${enrichedVideo.title}`);
 
     return {
-      videoId: video.id,
-      title: video.title,
-      directory: videoDir,
+      videoId: enrichedVideo.id,
+      title: enrichedVideo.title,
+      directory: outputDir,
       filesCount: subtitleFiles.length,
-      totalSize
+      totalSize,
+      outputFiles
     };
   } catch (error) {
     // Check if it's a known non-retryable error
