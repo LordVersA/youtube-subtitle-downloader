@@ -2,7 +2,6 @@
 
 > A production-ready YouTube subtitle downloader with concurrent processing and advanced features
 
-[![npm version](https://img.shields.io/npm/v/yt-sub-dl.svg)](https://www.npmjs.com/package/yt-sub-dl)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
 
@@ -38,11 +37,12 @@ A powerful Node.js CLI application to download YouTube subtitles from videos, pl
 ## Quick Start
 
 ```bash
-# Install dependencies
-npm install -g yt-sub-dl
+# Clone the repository
+git clone https://github.com/LordVersA/youtube-subtitle-downloader.git
+cd youtube-subtitle-downloader
 
 # Download subtitles
-yt-sub-dl "https://www.youtube.com/watch?v=VIDEO_ID"
+node src/index.js "https://www.youtube.com/watch?v=VIDEO_ID"
 ```
 
 That's it! Subtitles will be saved to the `./output` directory.
@@ -70,29 +70,15 @@ pip install yt-dlp
 # Or download from https://github.com/yt-dlp/yt-dlp
 ```
 
-### Install the Application
-
-#### Option 1: Install from npm (Recommended)
-
-```bash
-npm install -g yt-sub-dl
-```
-
-#### Option 2: Install from source
+### Clone the Repository
 
 ```bash
 # Clone the repository
-git clone https://github.com/USERNAME/yt-sub-dl.git
-cd yt-sub-dl
-
-# Install dependencies
-pnpm install
-# or
-npm install
-
-# Link globally (optional)
-npm link
+git clone https://github.com/LordVersA/youtube-subtitle-downloader.git
+cd youtube-subtitle-downloader
 ```
+
+No additional dependencies or npm packages required! Just Node.js and yt-dlp.
 
 ## Usage
 
@@ -100,22 +86,19 @@ npm link
 
 ```bash
 # Download subtitles from a single video
-yt-sub-dl "https://www.youtube.com/watch?v=VIDEO_ID"
-
-# Or if not linked
 node src/index.js "https://www.youtube.com/watch?v=VIDEO_ID"
 ```
 
 ### Download from Playlist
 
 ```bash
-yt-sub-dl "https://www.youtube.com/playlist?list=PLAYLIST_ID"
+node src/index.js "https://www.youtube.com/playlist?list=PLAYLIST_ID"
 ```
 
 ### Download from Channel
 
 ```bash
-yt-sub-dl "https://www.youtube.com/@channel-name"
+node src/index.js "https://www.youtube.com/@channel-name"
 ```
 
 ### Search Channel Videos
@@ -124,19 +107,19 @@ Search for specific videos in a YouTube channel and save results to JSON:
 
 ```bash
 # Search for videos containing "tutorial" in a channel
-yt-sub-dl search "https://www.youtube.com/@channel-name" "tutorial"
+node src/index.js search "https://www.youtube.com/@channel-name" "tutorial"
 
 # Search in channel streams
-yt-sub-dl search "https://www.youtube.com/@channel-name/streams" "live"
+node src/index.js search "https://www.youtube.com/@channel-name/streams" "live"
 
 # Search in channel videos
-yt-sub-dl search "https://www.youtube.com/@channel-name/videos" "python"
+node src/index.js search "https://www.youtube.com/@channel-name/videos" "python"
 
 # Specify output file
-yt-sub-dl search "https://www.youtube.com/@channel-name" "python" -o ./results.json
+node src/index.js search "https://www.youtube.com/@channel-name" "python" -o ./results.json
 
 # With verbose logging
-yt-sub-dl search "https://www.youtube.com/@channel-name" "javascript" -v
+node src/index.js search "https://www.youtube.com/@channel-name" "javascript" -v
 ```
 
 The search results will include:
@@ -151,28 +134,28 @@ The search results will include:
 
 ```bash
 # Specify output directory
-yt-sub-dl URL -o ./my-subtitles
+node src/index.js URL -o ./my-subtitles
 
 # Download multiple languages
-yt-sub-dl URL -l en,es,fr
+node src/index.js URL -l en,es,fr
 
 # Increase concurrent downloads
-yt-sub-dl URL -c 5
+node src/index.js URL -c 5
 
 # Keep original VTT/SRT files
-yt-sub-dl URL --keep-original
+node src/index.js URL --keep-original
 
 # Enable verbose logging
-yt-sub-dl URL -v
+node src/index.js URL -v
 
 # Save logs to file
-yt-sub-dl URL -v --log-file download.log
+node src/index.js URL -v --log-file download.log
 
 # Only download auto-generated subtitles
-yt-sub-dl URL --auto-only
+node src/index.js URL --auto-only
 
 # Set maximum retry attempts
-yt-sub-dl URL -r 5
+node src/index.js URL -r 5
 ```
 
 ## Command Line Options
@@ -180,7 +163,7 @@ yt-sub-dl URL -r 5
 ### Main Command (Download Subtitles)
 
 ```
-Usage: yt-sub-dl <url> [options]
+Usage: node src/index.js <url> [options]
 
 Arguments:
   url                           YouTube video, playlist, or channel URL
@@ -205,7 +188,7 @@ Options:
 ### Search Command
 
 ```
-Usage: yt-sub-dl search <channel-url> <query> [options]
+Usage: node src/index.js search <channel-url> <query> [options]
 
 Arguments:
   channel-url                  YouTube channel URL
